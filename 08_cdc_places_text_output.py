@@ -1,6 +1,4 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 from scipy.stats import ttest_ind
 
@@ -14,12 +12,10 @@ data_files = os.listdir(data_files_dir)
 # Filter out any non-CSV files if necessary
 data_files = [file for file in data_files if file.endswith('.csv')]
 
-# Directory to save graphs
-output_dir = 'cdc_places_data_graphs2'
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+# Prepare a list to store results
+results = []
 
-# Iterate over each data file, merge with urban/rural data, and create violin plots
+# Iterate over each data file, merge with urban/rural data, and calculate statistics
 for data_file in data_files:
     data_path = os.path.join(data_files_dir, data_file)
     data_df = pd.read_csv(data_path, header=0, names=['Year', 'zip_code', 'DataSource', 'Category', 'Measure', 'Data_Value_Unit',
@@ -35,14 +31,40 @@ for data_file in data_files:
     rural_data = merged_df[merged_df['urban_rural'] == 'Rural']['Data_Value']
     t_stat, p_value = ttest_ind(urban_data, rural_data, nan_policy='omit')
     
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    sns.violinplot(x='urban_rural', y='Data_Value', data=merged_df)
+    # Calculate mean and standard deviation for urban and rural areas
+    urban_mean = urban_data.mean()
+    rural_mean = rural_data.mean()
+    urban_std = urban_data.std()
+    rural_std = rural_data.std()
+    
+    # Calculate raw difference
+    raw_difference = urban_mean - rural_mean
+    
+    # Calculate percentage difference
+    if rural_mean != 0:
+        percentage_difference = (raw_difference / rural_mean) * 100
+    else:
+        percentage_difference = float('inf')  # Handle division by zero case
+    
+    # Append the results to the list
     data_file_title = data_file.replace('_=', '>=')
-    plt.title(f'{data_file_title} (p-value: {p_value:.8f})')
-    plt.xlabel('Area Type')
-    plt.ylabel('Data Value')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, data_file + ".jpg"))
-    # plt.show()
+    results.append({
+        'File': data_file_title,
+        'Urban Mean': urban_mean,
+        'Rural Mean': rural_mean,
+        'Urban Std': urban_std,
+        'Rural Std': rural_std,
+        'P-Value': p_value,
+        'Raw Difference': raw_difference,
+        'Percentage Difference': percentage_difference
+    })
+
+# Convert the results to a DataFrame and sort by Percentage Difference
+results_df = pd.DataFrame(results)
+results_df.sort_values(by='Percentage Difference', ascending=False, inplace=True)
+
+# Save the results to a CSV file
+results_df.to_csv('urban_rural_health_differences.csv', index=False)
+
+# Display the results
+print(results_df)
