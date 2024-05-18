@@ -41,10 +41,10 @@ for data_file in data_files:
     raw_difference = urban_mean - rural_mean
     
     # Calculate percentage difference
-    if rural_mean != 0:
+    if raw_difference > 0:
         percentage_difference = (raw_difference / rural_mean) * 100
     else:
-        percentage_difference = float('inf')  # Handle division by zero case
+        percentage_difference = (raw_difference / urban_mean) * 100
     
     # Append the results to the list
     data_file_title = data_file.replace('_=', '>=')
